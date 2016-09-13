@@ -72,6 +72,26 @@ getinterval(time_t s1, uint32_t ns1, time_t s2, uint32_t ns2,
 //
 // Command menu functions 
 
+
+/*
+ * Command for enabling thread debugging.
+ */
+static
+int
+cmd_dth(int nargs, char **args)
+{
+	(void)nargs;
+	(void)args;
+	dbflags = dbflags | 0x0010;
+	return 0;
+}
+
+
+
+
+
+
+
 /*
  * Function for a thread that runs an arbitrary userlevel program by
  * name.
@@ -549,6 +569,7 @@ static struct {
 	{ "q",		cmd_quit },
 	{ "exit",	cmd_quit },
 	{ "halt",	cmd_quit },
+	{ "dth", 	cmd_dth },
 
 #if OPT_SYNCHPROBS
 	/* in-kernel synchronization problem(s) */
