@@ -49,7 +49,12 @@
 #include <vnode.h>
 #include <vfs.h>
 #include <synch.h>
-#include <kern/fcntl.h>  
+#include <kern/fcntl.h> 
+#include "opt-A2.h" 
+
+#if OPT_A2
+#include <syscall.h>
+#endif
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -207,6 +212,10 @@ proc_bootstrap(void)
   if (no_proc_sem == NULL) {
     panic("could not create no_proc_sem semaphore\n");
   }
+#ifdef OPT_A2
+  PID_TABLE = create_pidTable();
+  add_pidEntry(PID_TABLE, kproc, NULL, NULL);
+#endif
 #endif // UW 
 }
 

@@ -513,7 +513,8 @@ synch.o: ../../thread/synch.c ../../include/types.h \
   ../../include/thread.h ../../include/array.h ../../include/threadlist.h \
   includelinks/machine/thread.h ../../include/setjmp.h \
   includelinks/kern/machine/setjmp.h ../../include/current.h \
-  includelinks/machine/current.h ../../include/synch.h
+  includelinks/machine/current.h ../../include/synch.h \
+  ../../include/cpu.h includelinks/machine/vm.h
 thread.o: ../../thread/thread.c ../../include/types.h \
   ../../include/kern/types.h includelinks/kern/machine/types.h \
   includelinks/machine/types.h ../../include/kern/errno.h \

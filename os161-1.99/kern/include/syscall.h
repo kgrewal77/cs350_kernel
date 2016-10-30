@@ -30,8 +30,14 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
+#include "opt-A2.h"
+#if OPT_A2
+#include <spinlock.h>
+#endif
 
 struct trapframe; /* from <machine/trapframe.h> */
+
+
 
 /*
  * The system call dispatcher.
@@ -44,8 +50,11 @@ void syscall(struct trapframe *tf);
  */
 
 /* Helper for fork(). You write this. */
+#if OPT_A2
+void enter_forked_process(void *trfr, int a);
+#else
 void enter_forked_process(struct trapframe *tf);
-
+#endif
 /* Enter user mode. Does not return. */
 void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
 		       vaddr_t entrypoint);
@@ -63,6 +72,25 @@ int sys_write(int fdesc,userptr_t ubuf,unsigned int nbytes,int *retval);
 void sys__exit(int exitcode);
 int sys_getpid(pid_t *retval);
 int sys_waitpid(pid_t pid, userptr_t status, int options, pid_t *retval);
+#if OPT_A2
+struct pidEntry{
+  struct proc *thisProc;
+  int pid;
+  struct proc *child;
+  struct proc *parent;
+};
+struct pidTable{
+  struct spinlock p_spinlock;
+  struct pidEntry **table;
+  int numprocs;
+  
+};
+struct pidTable *PID_TABLE;
+struct pidTable *create_pidTable(void);
+int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *child, struct proc *parent);
+void remove_pidEntry(struct pidTable *ptable, int pid);
+int sys_fork(struct trapframe *tf);
+#endif
 
 #endif // UW
 
