@@ -33,6 +33,7 @@
 #include "opt-A2.h"
 #if OPT_A2
 #include <spinlock.h>
+#include <synch.h>
 #endif
 
 struct trapframe; /* from <machine/trapframe.h> */
@@ -78,6 +79,10 @@ struct pidEntry{
   int pid;
   struct proc *child;
   struct proc *parent;
+  int exited;
+  int code;
+  struct cv *e_cv;
+  struct lock *e_lk;
 };
 struct pidTable{
   struct spinlock p_spinlock;
@@ -87,7 +92,7 @@ struct pidTable{
 };
 struct pidTable *PID_TABLE;
 struct pidTable *create_pidTable(void);
-int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent);
+int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent, pid_t *retval);
 void remove_pidEntry(struct pidTable *ptable, int pid);
 int sys_fork(struct trapframe *tf, pid_t *retval);
 #endif

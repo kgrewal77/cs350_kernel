@@ -98,7 +98,11 @@ runprogram(char *progname)
 		return result;
 	}
 #if OPT_A2
-        add_pidEntry(PID_TABLE, curproc, NULL);
+        pid_t rv = 0;
+        int err = add_pidEntry(PID_TABLE, curproc, NULL, &rv);
+        if(err){
+          return err;
+        }
 #endif
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,

@@ -214,7 +214,12 @@ proc_bootstrap(void)
   }
 #ifdef OPT_A2
   PID_TABLE = create_pidTable();
-  add_pidEntry(PID_TABLE, kproc, NULL);
+  pid_t retval;
+  int err = add_pidEntry(PID_TABLE, kproc, NULL, &retval);
+  if (err) {
+    panic("pidTable addition in proc_bootstrap failed: %s\n", strerror(err));
+  }
+
 #endif
 #endif // UW 
 }
