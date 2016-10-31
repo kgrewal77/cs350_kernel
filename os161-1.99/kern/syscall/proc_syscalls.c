@@ -199,10 +199,21 @@ void sys__exit(int exitcode) {
 int
 sys_getpid(pid_t *retval)
 {
+#if OPT_A2
+  for (int i = 1;i<=PID_TABLE->numprocs;i++){
+    if (curproc == PID_TABLE->table[i]->thisProc){
+      *retval = PID_TABLE->table[i]->pid;
+      return 0;
+    }
+  }
+  panic("get_pid failed to get current proc from PID_TABLE");
+  return -1;
+#else
   /* for now, this is just a stub that always returns a PID of 1 */
   /* you need to fix this to make it work properly */
   *retval = 1;
   return(0);
+#endif
 }
 
 /* stub handler for waitpid() system call                */
