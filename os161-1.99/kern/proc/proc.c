@@ -214,7 +214,7 @@ proc_bootstrap(void)
   }
 #ifdef OPT_A2
   PID_TABLE = create_pidTable();
-  add_pidEntry(PID_TABLE, kproc, NULL, NULL);
+  add_pidEntry(PID_TABLE, kproc, NULL);
 #endif
 #endif // UW 
 }

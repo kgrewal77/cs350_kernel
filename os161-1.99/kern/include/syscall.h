@@ -87,7 +87,7 @@ struct pidTable{
 };
 struct pidTable *PID_TABLE;
 struct pidTable *create_pidTable(void);
-int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *child, struct proc *parent);
+int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent);
 void remove_pidEntry(struct pidTable *ptable, int pid);
 int sys_fork(struct trapframe *tf, pid_t *retval);
 #endif

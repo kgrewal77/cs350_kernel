@@ -41,7 +41,7 @@ struct pidTable *create_pidTable(void){
   
   
 }
-int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *child, struct proc *parent){
+int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent){
   spinlock_acquire(&ptable->p_spinlock);
   if (ptable->numprocs > PID_MAX){
     return ENPROC;
@@ -49,7 +49,6 @@ int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *chil
   struct pidEntry *pe;
   pe = kmalloc(sizeof(struct pidEntry));
   pe->thisProc = target;
-  pe->child = child;
   pe->parent = parent;
   //for (int i = 1; i<= PID_MAX;i++){
   //  if (ptable->table[i]){
@@ -98,7 +97,7 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   child->p_addrspace = newas;
   spinlock_release(&child->p_lock);
 
-  int pid = add_pidEntry(PID_TABLE, child, NULL, curproc);
+  int pid = add_pidEntry(PID_TABLE, child, curproc);
   if (pid == ENPROC) {
     kprintf("pidTable addition failed: %s\n", strerror(pid));
     proc_destroy(child);
