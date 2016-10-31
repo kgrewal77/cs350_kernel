@@ -134,7 +134,7 @@ syscall(struct trapframe *tf)
 
 #if OPT_A2
         case SYS_fork:
-          retval = sys_fork(tf);
+          err = sys_fork(tf, (pid_t *)&retval);
 	  break;
 #endif
 
@@ -186,48 +186,48 @@ syscall(struct trapframe *tf)
 void
 enter_forked_process(void *trfr, int a)
 {
-        struct trapframe *tf;
+        struct trapframe tf;
         struct trapframe *trf = trfr;
         (void)a;
         (void) trfr;
-        tf->tf_status = trf->tf_status;     /* coprocessor 0 status register */
-        tf->tf_cause = trf->tf_cause;      /* coprocessor 0 cause register */
-        tf->tf_lo = trf->tf_lo;
-        tf->tf_hi = trf->tf_hi;
-        tf->tf_ra = trf->tf_ra;         /* Saved register 31 */
-        tf->tf_at = trf->tf_at;         /* Saved register 1 (AT) */
-        tf->tf_v0 = 0;         /* Saved register 2 (v0) */
-        tf->tf_v1 = trf->tf_v1;         /* etc. */
-        tf->tf_a0 = trf->tf_a0;
-        tf->tf_a1 = trf->tf_a1;
-        tf->tf_a2 = trf->tf_a2;
-        tf->tf_a3 = 0;
-        tf->tf_t0 = trf->tf_t0;
-        tf->tf_t1 = trf->tf_t1;
-        tf->tf_t2 = trf->tf_t2;
-        tf->tf_t3 = trf->tf_t3;
-        tf->tf_t4 = trf->tf_t4;
-        tf->tf_t5 = trf->tf_t5;
-        tf->tf_t6 = trf->tf_t6;
-        tf->tf_t7 = trf->tf_t7;
-        tf->tf_s0 = trf->tf_s0;
-        tf->tf_s1 = trf->tf_s1;
-        tf->tf_s2 = trf->tf_s2;
-        tf->tf_s3 = trf->tf_s3;
-        tf->tf_s4 = trf->tf_s4;
-        tf->tf_s5 = trf->tf_s5;
-        tf->tf_s6 = trf->tf_s6;
-        tf->tf_s7 = trf->tf_s7;
-        tf->tf_t8 = trf->tf_t8;
-        tf->tf_t9 = trf->tf_t9;
-        tf->tf_k0 = trf->tf_k0;         /* dummy (see exception.S comments) */
-        tf->tf_k1 = trf->tf_k1;         /* dummy */
-        tf->tf_gp = trf->tf_gp;
-        tf->tf_sp = trf->tf_sp;
-        tf->tf_s8 = trf->tf_s8;
-        tf->tf_epc = trf->tf_epc+4; 
+        tf.tf_status = trf->tf_status;     /* coprocessor 0 status register */
+        tf.tf_cause = trf->tf_cause;      /* coprocessor 0 cause register */
+        tf.tf_lo = trf->tf_lo;
+        tf.tf_hi = trf->tf_hi;
+        tf.tf_ra = trf->tf_ra;         /* Saved register 31 */
+        tf.tf_at = trf->tf_at;         /* Saved register 1 (AT) */
+        tf.tf_v0 = 0;         /* Saved register 2 (v0) */
+        tf.tf_v1 = trf->tf_v1;         /* etc. */
+        tf.tf_a0 = trf->tf_a0;
+        tf.tf_a1 = trf->tf_a1;
+        tf.tf_a2 = trf->tf_a2;
+        tf.tf_a3 = 0;
+        tf.tf_t0 = trf->tf_t0;
+        tf.tf_t1 = trf->tf_t1;
+        tf.tf_t2 = trf->tf_t2;
+        tf.tf_t3 = trf->tf_t3;
+        tf.tf_t4 = trf->tf_t4;
+        tf.tf_t5 = trf->tf_t5;
+        tf.tf_t6 = trf->tf_t6;
+        tf.tf_t7 = trf->tf_t7;
+        tf.tf_s0 = trf->tf_s0;
+        tf.tf_s1 = trf->tf_s1;
+        tf.tf_s2 = trf->tf_s2;
+        tf.tf_s3 = trf->tf_s3;
+        tf.tf_s4 = trf->tf_s4;
+        tf.tf_s5 = trf->tf_s5;
+        tf.tf_s6 = trf->tf_s6;
+        tf.tf_s7 = trf->tf_s7;
+        tf.tf_t8 = trf->tf_t8;
+        tf.tf_t9 = trf->tf_t9;
+        tf.tf_k0 = trf->tf_k0;         /* dummy (see exception.S comments) */
+        tf.tf_k1 = trf->tf_k1;         /* dummy */
+        tf.tf_gp = trf->tf_gp;
+        tf.tf_sp = trf->tf_sp;
+        tf.tf_s8 = trf->tf_s8;
+        tf.tf_epc = trf->tf_epc+4; 
         kfree(trf);
-        mips_usermode(tf);
+        mips_usermode(&tf);
 }
 #else
 void

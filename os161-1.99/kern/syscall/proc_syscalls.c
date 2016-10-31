@@ -32,6 +32,9 @@ struct pidTable *create_pidTable(void){
      kfree(pt);
      return NULL;
   }
+  //for (int i = 1;i<=PID_MAX;i++){
+  //  pt->table[i] = kmalloc(sizeof(struct pidEntry));
+  //}
   
   spinlock_init(&pt->p_spinlock);
   return pt;
@@ -48,14 +51,15 @@ int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *chil
   pe->thisProc = target;
   pe->child = child;
   pe->parent = parent;
-  for (int i = 1; i<= PID_MAX;i++){
-    if (ptable->table[i]){
-      pe->pid = i;
-      ptable->table[i] = pe;
-      spinlock_release(&ptable->p_spinlock);
-      return i;
-    }
-  }
+  //for (int i = 1; i<= PID_MAX;i++){
+  //  if (ptable->table[i]){
+  pe->pid = ptable->numprocs +1;
+  ptable->table[pe->pid] = pe;
+  ptable->numprocs += 1;
+  spinlock_release(&ptable->p_spinlock);
+  return pe->pid;
+    //}
+  //}
   spinlock_release(&ptable->p_spinlock);
   panic("pid table isnt full but no space for new entry");
   return -1;
@@ -67,11 +71,12 @@ void remove_pidEntry(struct pidTable *ptable, int pid){
     return;
   }
   kfree(ptable->table[pid]);
+  ptable->numprocs -= 1;
   spinlock_release(&ptable->p_spinlock);
 }
 
 
-int sys_fork(struct trapframe *tf) {
+int sys_fork(struct trapframe *tf, pid_t *retval) {
   
   struct proc *child = proc_create_runprogram("child");
   if (child == NULL) {
@@ -148,8 +153,8 @@ int sys_fork(struct trapframe *tf) {
     proc_destroy(child);
     return result;
   }
-  
-  return pid;
+  *retval = pid;
+  return 0;
 
 }
 #endif
