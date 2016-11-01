@@ -71,7 +71,7 @@ int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *pare
   pe->thisProc = target;
   pe->parent = parent;
   pe->exited = 0;
-  pe->code = 0;
+  pe->code = -1;
   for (int i = 1; i<= PID_MAX;i++){
     if (!ptable->table[i]){
       pe->pid = i;
@@ -295,12 +295,12 @@ sys_waitpid(pid_t pid,
     return(EINVAL);
   }
 #if OPT_A2
-  if (PID_TABLE->table[pid]->parent == curproc){
+  if (PID_TABLE->table[pid] && PID_TABLE->table[pid]->parent == curproc){
     lock_acquire(PID_TABLE->table[pid]->e_lk);
     while (!PID_TABLE->table[pid]->exited){
       cv_wait(PID_TABLE->table[pid]->e_cv, PID_TABLE->table[pid]->e_lk);
     }
-    exitstatus = PID_TABLE->table[pid]->code;
+    exitstatus = _MKWAIT_EXIT(PID_TABLE->table[pid]->code);
     spinlock_acquire(&PID_TABLE->p_spinlock);
     lock_release(PID_TABLE->table[pid]->e_lk);
     
