@@ -47,7 +47,6 @@ struct pidTable *create_pidTable(void){
   
 }
 int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent, pid_t *retval){
-  spinlock_acquire(&ptable->p_spinlock);
   if (ptable->numprocs > PID_MAX){
     return ENPROC;
   }
@@ -71,14 +70,13 @@ int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *pare
   }
   pe->thisProc = target;
   pe->parent = parent;
-  pe->exited = 1;
+  pe->exited = 0;
   pe->code = 0;
   for (int i = 1; i<= PID_MAX;i++){
     if (!ptable->table[i]){
       pe->pid = i;
       ptable->table[pe->pid] = pe;
       ptable->numprocs += 1;
-      spinlock_release(&ptable->p_spinlock);
       *retval = pe->pid;
       return 0;
     }
@@ -87,15 +85,14 @@ int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *pare
 }
 
 void remove_pidEntry(struct pidTable *ptable, int pid){
-  spinlock_acquire(&ptable->p_spinlock);
   if (!ptable->table[pid]){
     return;
   }
   lock_destroy(ptable->table[pid]->e_lk);
   cv_destroy(ptable->table[pid]->e_cv);
   kfree(ptable->table[pid]);
+  ptable->table[pid] = NULL;
   ptable->numprocs -= 1;
-  spinlock_release(&ptable->p_spinlock);
 }
 
 
@@ -120,8 +117,10 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   spinlock_acquire(&child->p_lock);
   child->p_addrspace = newas;
   spinlock_release(&child->p_lock);
-
+  
+  spinlock_acquire(&PID_TABLE->p_spinlock);
   int err = add_pidEntry(PID_TABLE, child, curproc, retval);
+  spinlock_release(&PID_TABLE->p_spinlock);
   if (err) {
     proc_destroy(child);
     return err;
@@ -192,7 +191,36 @@ void sys__exit(int exitcode) {
   struct proc *p = curproc;
   /* for now, just include this to keep the compiler from complaining about
      an unused variable */
+#if OPT_A2
+  pid_t pid;
+  sys_getpid(&pid);
+  
+  if(PID_TABLE->table[pid]->parent){
+    lock_acquire(PID_TABLE->table[pid]->e_lk);
+    PID_TABLE->table[pid]->exited = 1;
+    PID_TABLE->table[pid]->code = exitcode;
+    cv_signal(PID_TABLE->table[pid]->e_cv, PID_TABLE->table[pid]->e_lk);
+    spinlock_acquire(&PID_TABLE->p_spinlock);
+    for (int i =1;i<=PID_MAX;i++){
+      if (PID_TABLE->table[i] && PID_TABLE->table[i]->parent == curproc && PID_TABLE->table[i]->exited){
+        remove_pidEntry(PID_TABLE, i);
+      }
+    }
+    spinlock_release(&PID_TABLE->p_spinlock);
+    lock_release(PID_TABLE->table[pid]->e_lk);  
+  } else {
+    spinlock_acquire(&PID_TABLE->p_spinlock);
+    for (int i =1;i<=PID_MAX;i++){
+      if (PID_TABLE->table[i] && PID_TABLE->table[i]->parent == curproc && PID_TABLE->table[i]->exited){
+        remove_pidEntry(PID_TABLE, i);
+      }
+    }
+    remove_pidEntry(PID_TABLE, pid);
+    spinlock_release(&PID_TABLE->p_spinlock);
+  }
+#else
   (void)exitcode;
+#endif
 
   DEBUG(DB_SYSCALL,"Syscall: _exit(%d)\n",exitcode);
 
@@ -227,13 +255,13 @@ int
 sys_getpid(pid_t *retval)
 {
 #if OPT_A2
-  for (int i = 1;i<=PID_TABLE->numprocs;i++){
-    if (curproc == PID_TABLE->table[i]->thisProc){
+  for (int i = 1;i<=PID_MAX;i++){
+    if (PID_TABLE->table[i] && curproc == PID_TABLE->table[i]->thisProc && !PID_TABLE->table[i]->exited){
       *retval = PID_TABLE->table[i]->pid;
       return 0;
     }
   }
-  panic("get_pid failed to get current proc from PID_TABLE");
+  //panic("get_pid failed to get current proc from PID_TABLE");
   return -1;
 #else
   /* for now, this is just a stub that always returns a PID of 1 */
@@ -266,6 +294,32 @@ sys_waitpid(pid_t pid,
   if (options != 0) {
     return(EINVAL);
   }
+#if OPT_A2
+  if (PID_TABLE->table[pid]->parent == curproc){
+    lock_acquire(PID_TABLE->table[pid]->e_lk);
+    while (!PID_TABLE->table[pid]->exited){
+      cv_wait(PID_TABLE->table[pid]->e_cv, PID_TABLE->table[pid]->e_lk);
+    }
+    exitstatus = PID_TABLE->table[pid]->code;
+    spinlock_acquire(&PID_TABLE->p_spinlock);
+    lock_release(PID_TABLE->table[pid]->e_lk);
+    
+    result = copyout((void *)&exitstatus,status,sizeof(int));
+    if (result) {
+      spinlock_release(&PID_TABLE->p_spinlock);
+      return EFAULT;
+    }
+    remove_pidEntry(PID_TABLE, pid);
+    spinlock_release(&PID_TABLE->p_spinlock);
+    *retval = pid;
+    return 0;
+    
+  } else if(!PID_TABLE->table[pid]->parent){
+    return ESRCH;
+  } else {
+    return ECHILD;
+  }
+#else
   /* for now, just pretend the exitstatus is 0 */
   exitstatus = 0;
   result = copyout((void *)&exitstatus,status,sizeof(int));
@@ -274,4 +328,5 @@ sys_waitpid(pid_t pid,
   }
   *retval = pid;
   return(0);
+#endif
 }

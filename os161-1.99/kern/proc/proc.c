@@ -215,7 +215,9 @@ proc_bootstrap(void)
 #ifdef OPT_A2
   PID_TABLE = create_pidTable();
   pid_t retval;
+  spinlock_acquire(&PID_TABLE->p_spinlock);
   int err = add_pidEntry(PID_TABLE, kproc, NULL, &retval);
+  spinlock_release(&PID_TABLE->p_spinlock);
   if (err) {
     panic("pidTable addition in proc_bootstrap failed: %s\n", strerror(err));
   }

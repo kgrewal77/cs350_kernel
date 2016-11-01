@@ -99,7 +99,9 @@ runprogram(char *progname)
 	}
 #if OPT_A2
         pid_t rv = 0;
+        spinlock_acquire(&PID_TABLE->p_spinlock);
         int err = add_pidEntry(PID_TABLE, curproc, NULL, &rv);
+        spinlock_release(&PID_TABLE->p_spinlock);
         if(err){
           return err;
         }
