@@ -95,6 +95,7 @@ struct pidTable *create_pidTable(void);
 int add_pidEntry(struct pidTable *ptable, struct proc *target, struct proc *parent, pid_t *retval);
 void remove_pidEntry(struct pidTable *ptable, int pid);
 int sys_fork(struct trapframe *tf, pid_t *retval);
+int sys_execv(userptr_t progname, userptr_t args);
 #endif
 
 #endif // UW
