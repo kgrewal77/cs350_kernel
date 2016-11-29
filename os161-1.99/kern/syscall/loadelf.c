@@ -59,6 +59,9 @@
 #include <addrspace.h>
 #include <vnode.h>
 #include <elf.h>
+#include "opt-A3.h"
+#include <mips/tlb.h>
+#include <spl.h>
 
 /*
  * Load a segment at virtual address VADDR. The segment in memory
@@ -302,6 +305,20 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	}
 
 	*entrypoint = eh.e_entry;
-
+#if OPT_A3
+        int spl = splhigh();
+        uint32_t ehi = USERSTACK;
+        uint32_t elo = 0;
+        elo &= ~TLBLO_DIRTY;
+        elo &= ~TLBLO_VALID;
+        for (i=0; i<NUM_TLB; i++) {
+          
+          tlb_write(ehi, elo, i);
+          ehi += PAGE_SIZE;
+          
+        }
+        splx(spl);
+        as->elf_loaded = 1;
+#endif
 	return 0;
 }

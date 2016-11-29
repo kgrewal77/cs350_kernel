@@ -39,7 +39,11 @@
 #include <vm.h>
 #include <mainbus.h>
 #include <syscall.h>
-
+#include "opt-A3.h"
+#include <syscall.h>
+#include <addrspace.h>
+#include <proc.h>
+#include <limits.h>
 
 /* in exception.S */
 extern void asm_usermode(struct trapframe *tf);
@@ -111,10 +115,53 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 	/*
 	 * You will probably want to change this.
 	 */
+#if OPT_A3
+        (void)vaddr;
+        (void)epc;
+        struct addrspace *as;
+        struct proc *p = curproc;
+        pid_t pid;
+        sys_getpid(&pid);
+        if(PID_TABLE->table[pid]->parent){
+          lock_acquire(PID_TABLE->table[pid]->e_lk);
+          PID_TABLE->table[pid]->exited = 1;
+          PID_TABLE->table[pid]->code = sig;
+          cv_signal(PID_TABLE->table[pid]->e_cv, PID_TABLE->table[pid]->e_lk);
+          spinlock_acquire(&PID_TABLE->p_spinlock);
+          for (int i =1;i<=PID_MAX;i++){
+            if (PID_TABLE->table[i] && PID_TABLE->table[i]->parent == curproc && PID_TABLE->table[i]->exited){
+              remove_pidEntry(PID_TABLE, i);
+            }
+          }
+          spinlock_release(&PID_TABLE->p_spinlock);
+          lock_release(PID_TABLE->table[pid]->e_lk);  
+        } else {
+          spinlock_acquire(&PID_TABLE->p_spinlock);
+          for (int i =1;i<=PID_MAX;i++){
+            if (PID_TABLE->table[i] && PID_TABLE->table[i]->parent == curproc && PID_TABLE->table[i]->exited){
+              remove_pidEntry(PID_TABLE, i);
+            }
+          }
+          remove_pidEntry(PID_TABLE, pid);
+          spinlock_release(&PID_TABLE->p_spinlock);
+        }
 
+
+
+        KASSERT(curproc->p_addrspace != NULL);
+        as_deactivate();
+        as = curproc_setas(NULL);
+        as_destroy(as);
+        proc_remthread(curthread);
+        proc_destroy(p);
+        thread_exit();
+        panic("return from thread_exit in sys_exit\n");
+
+#elif
 	kprintf("Fatal user mode trap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
 		code, sig, trapcodenames[code], epc, vaddr);
 	panic("I don't know how to handle this\n");
+#endif
 }
 
 /*
@@ -231,9 +278,14 @@ mips_trap(struct trapframe *tf)
 	 */
 	switch (code) {
 	case EX_MOD:
+#if OPT_A3
+                kill_curthread(tf->tf_epc, code, tf->tf_vaddr);
+                goto done;
+#elif
 		if (vm_fault(VM_FAULT_READONLY, tf->tf_vaddr)==0) {
 			goto done;
 		}
+#endif
 		break;
 	case EX_TLBL:
 		if (vm_fault(VM_FAULT_READ, tf->tf_vaddr)==0) {
